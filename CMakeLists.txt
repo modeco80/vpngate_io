@@ -32,4 +32,9 @@ if(VGIO_BUILD_UTILITIES)
         vpngate_io
         Boost::json
     )
+
+    add_executable(vpngate_datid src/datid.cpp)
+    target_link_libraries(vpngate_datid 
+        vpngate_io
+    )
 endif()
