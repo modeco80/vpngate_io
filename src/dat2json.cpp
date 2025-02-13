@@ -54,6 +54,12 @@ int main(int argc, char** argv) {
 
 	auto dat = File::Open(argv[1], O_RDONLY);
 
+	// Check if the file is really a dat file
+	if(dat.ReadLine() != "[VPNGate Data File]")  {
+        std::printf("This file is NOT a VPNGate dat file.\n");
+        return 1;
+    }
+
 	auto decryptedSize = dat.Size() - 0x104;
 	auto decryptedData = GetDecryptedFileData(dat);
 	vg::PackReader innerPackReader(decryptedData.get(), decryptedSize);
