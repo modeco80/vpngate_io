@@ -30,7 +30,27 @@ std::unique_ptr<std::uint8_t[]> GetDecryptedFileData(File& file) {
 	return vpngate_io::EasyDecrypt(&rc4_key[0], &encryptedBuffer[0], dataSize);
 }
 
+void help(char* progname) {
+	// clang-format off
+	printf(
+	"VPNGate .dat to JSON utility\n"
+			"Usage: %s [path to VPNGate .dat file]\n",
+			progname
+	);
+	// clang-format on
+}
+
 int main(int argc, char** argv) {
+	if(argc != 2) {
+		help(argv[0]);
+		return 0;
+	}
+
+	if(std::string_view(argv[1]) == "--help") {
+		help(argv[0]);
+		return 0;
+	}
+
 	auto dat = File::Open(argv[1], O_RDONLY);
 
 	auto decryptedSize = dat.Size() - 0x104;
