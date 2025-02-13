@@ -16,15 +16,17 @@ namespace vpngate_io {
 	};
 
 	constexpr std::string_view ValueTypeToString(ValueType t) {
-		constexpr static std::string_view table[] = {
-			"ValueType::Int",
-			"ValueType::Data",
-			"ValueType::String",
-			"ValueType::WString",
-			"ValueType::Int64"
-		};
-
-		return table[static_cast<std::uint64_t>(t)];
+		using enum ValueType;
+		// clang-format off
+		switch(t) {
+			case Int: return "int"; break;
+			case Data: return "data"; break;
+			case String: return "string"; break;
+			case WString: return "wstring"; break;
+			case Int64: return "int64"; break;
+			default: return "unknown"; break;
+		}
+		// clang-format on
 	}
 
 	/// A simple metafunction which returns a "natural"
