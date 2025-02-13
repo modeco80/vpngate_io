@@ -6,18 +6,20 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Boost REQUIRED COMPONENTS json)
+find_package(ZLIB REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 
 add_library(vpngate_io
     src/lib/easycrypt.cpp
     src/lib/dat_file.cpp
+    src/lib/pack_reader.cpp
 )
 target_include_directories(vpngate_io PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 target_link_libraries(vpngate_io PUBLIC
-# TODO do this properly.
-    z
-    crypto
+    ZLIB::ZLIB
+    OpenSSL::Crypto
 )
 
 
