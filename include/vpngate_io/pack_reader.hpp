@@ -33,15 +33,6 @@ namespace vpngate_io {
 			}
 
 		   public:
-			template <class F>
-			void WalkAll(F&& f) {
-				// We implement this in the .cpp file to keep binary size down.
-				WalkAllImpl([](void* user, ValueType type, std::string_view name, std::size_t size, std::uint8_t* bufPtr) {
-					(*static_cast<F*>(user))(type, name, size, bufPtr);
-				},
-							&f);
-			}
-
 			/// Structure for [PackReader::Keys()]
 			struct ElementKeyT {
 				std::string_view key;
@@ -138,8 +129,6 @@ namespace vpngate_io {
 			}
 
 		   private:
-			void WalkAllImpl(void (*Func)(void*, ValueType, std::string_view, std::size_t, std::uint8_t*), void* user);
-
 			struct KeyData {
 				std::string_view key;
 				ValueType type;
