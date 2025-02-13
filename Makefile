@@ -1,7 +1,7 @@
 # Temporary make buildsystem until
 # I do something not make
 CXX = clang++
-CXXFLAGS = -std=c++23 -O3
+CXXFLAGS = -std=c++23 -O3 -Iinclude
 
 all: test
 
