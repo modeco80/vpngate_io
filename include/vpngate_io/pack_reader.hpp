@@ -4,8 +4,6 @@
 #include <cstddef>
 #include <cstdio>
 #include <optional>
-#include <span>
-#include <string_view>
 #include <vector>
 #include <vpngate_io/value_types.hpp>
 

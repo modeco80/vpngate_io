@@ -12,6 +12,7 @@
 #include "file.hpp"
 
 namespace json = boost::json;
+namespace vg = vpngate_io;
 
 std::unique_ptr<std::uint8_t[]> GetDecryptedFileData(File& file) {
 	std::uint8_t rc4_key[0x14] {};
@@ -27,7 +28,7 @@ std::unique_ptr<std::uint8_t[]> GetDecryptedFileData(File& file) {
 	file.Read(&rc4_key[0], sizeof(rc4_key));
 	file.Read(&encryptedBuffer[0], dataSize);
 
-	return vpngate_io::EasyDecrypt(&rc4_key[0], &encryptedBuffer[0], dataSize);
+	return vg::EasyDecrypt(&rc4_key[0], &encryptedBuffer[0], dataSize);
 }
 
 void help(char* progname) {
@@ -55,27 +56,29 @@ int main(int argc, char** argv) {
 
 	auto decryptedSize = dat.Size() - 0x104;
 	auto decryptedData = GetDecryptedFileData(dat);
-	vpngate_io::PackReader innerPackReader(decryptedData.get(), decryptedSize);
+	vg::PackReader innerPackReader(decryptedData.get(), decryptedSize);
 
 	std::size_t dataSize {};
 
-	auto datPackedDataBuffer = vpngate_io::GetDATPackData(innerPackReader, dataSize);
+	auto datPackedDataBuffer = vg::GetDATPackData(innerPackReader, dataSize);
 
-	vpngate_io::PackReader packReader(datPackedDataBuffer.get(), dataSize);
+	vg::PackReader packReader(datPackedDataBuffer.get(), dataSize);
 
-	auto length = packReader.Get<vpngate_io::ValueType::Int64>("ID").size();
+	// We can pick any table here to query the length of the keys we want to associatively map, 
+	// but in this case, we just pick the ID table. Why not.
+	auto length = packReader.Get<vg::ValueType::Int64>("ID").size();
 
 	// These tables are mapped back to an associcative ordering in the following code
 
-	auto idTable = packReader.Get<vpngate_io::ValueType::Int64>("ID");
-	auto nameTable = packReader.Get<vpngate_io::ValueType::String>("Name");
-	auto ownerTable = packReader.Get<vpngate_io::ValueType::WString>("Owner");
-	auto messageTable = packReader.Get<vpngate_io::ValueType::WString>("Message");
+	auto idTable = packReader.Get<vg::ValueType::Int64>("ID");
+	auto nameTable = packReader.Get<vg::ValueType::String>("Name");
+	auto ownerTable = packReader.Get<vg::ValueType::WString>("Owner");
+	auto messageTable = packReader.Get<vg::ValueType::WString>("Message");
 
-	auto ipTable = packReader.Get<vpngate_io::ValueType::String>("IP");
-	auto hostnameTable = packReader.Get<vpngate_io::ValueType::String>("HostName");
-	auto fqdnTable = packReader.Get<vpngate_io::ValueType::String>("Fqdn");
-	auto countryTable = packReader.Get<vpngate_io::ValueType::String>("CountryShort");
+	auto ipTable = packReader.Get<vg::ValueType::String>("IP");
+	auto hostnameTable = packReader.Get<vg::ValueType::String>("HostName");
+	auto fqdnTable = packReader.Get<vg::ValueType::String>("Fqdn");
+	auto countryTable = packReader.Get<vg::ValueType::String>("CountryShort");
 
 	json::object root = {
 		{ "version", 1 }
