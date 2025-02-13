@@ -5,6 +5,8 @@ project(vpngate_io)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(Boost REQUIRED COMPONENTS json)
+
 
 add_library(vpngate_io
     src/lib/easycrypt.cpp
@@ -19,7 +21,8 @@ target_link_libraries(vpngate_io PUBLIC
 )
 
 
-add_executable(test src/test.cpp)
-target_link_libraries(test 
+add_executable(vpngate_dat2json src/dat2json.cpp)
+target_link_libraries(vpngate_dat2json 
     vpngate_io
+    Boost::json
 )

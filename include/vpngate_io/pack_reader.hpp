@@ -71,7 +71,7 @@ namespace vpngate_io {
 
 							case ValueType::String: {
 								auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-								f(elementType, elementName, dataSize - 1, bufptr + 4);
+								f(elementType, elementName, dataSize, bufptr + 4);
 
 								// Walk next value
 								bufptr += 4 + (dataSize);
@@ -79,7 +79,14 @@ namespace vpngate_io {
 
 							case ValueType::WString: {
 								auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-								f(elementType, elementName, dataSize - 1, bufptr + 4);
+
+								// :((((
+								if(dataSize == 0) {
+									f(elementType, elementName, 0, nullptr);
+								} else {
+									f(elementType, elementName, dataSize - 1, bufptr + 4);
+								}
+								
 
 								// Walk next value
 								bufptr += 4 + (dataSize);
@@ -176,6 +183,12 @@ namespace vpngate_io {
 								ret.push_back(std::string_view { reinterpret_cast<const char*>(buffer), size });
 							}
 						}
+
+						if constexpr(Type == ValueType::Int64) {
+							auto swapped = Swap(*reinterpret_cast<std::uint64_t*>(buffer));
+							ret.push_back(swapped);
+						}
+
 					}
 				});
 
