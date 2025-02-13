@@ -4,19 +4,18 @@
 #include <unistd.h>
 
 #include <cstdint>
-#include <cstring>
 #include <cstdio>
+#include <cstring>
 #include <system_error>
 
 struct File {
-
-    /// Opens a file. The file always has O_CLOEXEC enabled.
+	/// Opens a file. The file always has O_CLOEXEC enabled.
 	static File Open(const char* path, int mode) {
 		if(auto fd = open(path, mode | O_CLOEXEC); fd != -1) {
 			return File(fd);
 		} else {
 			// errno is mappable to system_category
-			throw std::system_error{errno, std::generic_category()};
+			throw std::system_error { errno, std::generic_category() };
 		}
 	}
 
@@ -38,7 +37,7 @@ struct File {
 	}
 
 	std::uint64_t Write(const void* buffer, std::size_t length) {
-		return write(fd, buffer, length);	
+		return write(fd, buffer, length);
 	}
 
 	std::uint64_t Seek(std::uint64_t offset, int whence) {
@@ -60,12 +59,43 @@ struct File {
 
 	std::uint64_t Size() {
 		return size;
-	}	
+	}
 
-private:
-	File(int fd) 
+	std::string ReadLine() {
+		std::string str;
+
+		char rn[3] {};
+		uint32_t rnindex = 0;
+
+		while(true) {
+			char c;
+
+			if(Read(&c, sizeof(c)) != sizeof(c))
+				break;
+
+			// probably world's worst scanning machinery for this
+			// but it works:tm:
+			if(c == '\r' || c == '\n') {
+				rn[rnindex++] = c;
+
+				if(rnindex == 2) {
+					if(rn[0] == '\r' && rn[1] == '\n') {
+						break;
+					} else {
+						rnindex = 0;
+					}
+				}
+			} else {
+				str.push_back(c);
+			}
+		}
+
+		return str;
+	}
+
+   private:
+	File(int fd)
 		: fd(fd) {
-
 		// Cache size.
 		Seek(0, SEEK_END);
 		size = Tell();
