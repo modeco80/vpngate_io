@@ -1,9 +1,9 @@
 //! value_types.hpp: Types for Pack values
 #pragma once
 
-#include <string_view>
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 namespace vpngate_io {
 
@@ -27,35 +27,37 @@ namespace vpngate_io {
 		return table[static_cast<std::uint64_t>(t)];
 	}
 
-
 	/// A simple metafunction which returns a "natural"
-	/// C++ type to repressent a Pack value
-	template<ValueType t>
+	/// C++ type to repressent a Pack value.
+	///
+	/// Well, that's a lie; metafunctions are never simple.
+	/// But this one should be *understandable* at least.
+	template <ValueType t>
 	struct ValueTypeToNaturalType {};
 
-	template<>
+	template <>
 	struct ValueTypeToNaturalType<ValueType::Int> {
 		using Type = std::uint32_t;
 	};
 
-	template<>
+	template <>
 	struct ValueTypeToNaturalType<ValueType::Data> {
 		using Type = std::span<std::uint8_t>;
 	};
 
-	template<>
+	template <>
 	struct ValueTypeToNaturalType<ValueType::String> {
 		using Type = std::string_view;
 	};
 
-	template<>
+	template <>
 	struct ValueTypeToNaturalType<ValueType::WString> {
 		using Type = std::string_view;
 	};
 
-	template<>
+	template <>
 	struct ValueTypeToNaturalType<ValueType::Int64> {
 		using Type = std::uint64_t;
 	};
 
-}
+} // namespace vpngate_io

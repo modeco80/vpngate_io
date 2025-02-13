@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vpngate_io/dat_file.hpp>
 #include <vpngate_io/pack_reader.hpp>
+#include "vpngate_io/value_types.hpp"
 
 namespace vpngate_io {
 
@@ -13,8 +14,8 @@ namespace vpngate_io {
 		std::size_t dataSize = 0;
 		bool dataCompressed = false;
 
-		if(auto c = pack.GetFirst<ValueType::Int>("compressed"); c.has_value()) {
-			auto compressed = c.value();
+		if(auto c = pack.KeyExists<ValueType::Int>("compressed"); c == true) {
+			auto compressed = pack.GetFirst<ValueType::Int>("compressed").value();
 
 			if(compressed == 1) {
 				dataCompressed = true;

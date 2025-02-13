@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bit>
+#include <cstddef>
 #include <cstdio>
 #include <optional>
 #include <span>
@@ -41,80 +42,90 @@ namespace vpngate_io {
 							&f);
 			}
 
-			// TODO: Not this, just name the struct properly
-			// I just was debating to use a pair for this or a tuple
-			// or something
-			using ElementKeyT = struct {
+			struct ElementKeyT {
 				std::string_view key;
 				ValueType elementType;
 			};
 
+			/// Gets all keys and their type.
 			std::vector<ElementKeyT> Keys();
 
-			/// Returns `true` if the specified key exists
+			/// Returns `true` if the specified key exists with the given type.
 			template <ValueType Type>
 			bool KeyExists(std::string_view key) {
-				bool ret = false;
-
-				// Walk the keys; if the key exists AND has the type the user has specified, update ret to true
-				WalkAll([&](ValueType type, std::string_view name, std::size_t size, std::uint8_t* buffer) {
-					// Skip once we have walked a single key which matches.
-					if(ret)
-						return;
-
-					if(name == key && type == Type) {
-						ret = true;
+				if(auto res = WalkToImpl(key); res.has_value()) {
+					if(res.value().type == Type) {
+						// Same type
+						return true;
+					} else {
+						// Different
+						return false;
 					}
-				});
-				return ret;
+				} else {
+					return false;
+				}
 			}
 
+			/// Gets all the values for a key.
 			template <ValueType Type>
 			auto Get(std::string_view key) -> std::vector<typename ValueTypeToNaturalType<Type>::Type> {
 				using T = typename ValueTypeToNaturalType<Type>::Type;
 				std::vector<T> ret;
 
-				WalkAll([&](ValueType type, std::string_view name, std::size_t size, std::uint8_t* buffer) {
-					if(name == key && type == Type) {
+				if(auto res = WalkToImpl(key); res.has_value()) {
+					auto& r = res.value();
+
+					// Wrong type provided @ compile time.
+					if(r.type != Type)
+						return ret;
+
+					ret.resize(r.nrValues);
+
+					WalkValuesImpl(r.valueMemory, Type, r.nrValues, [](void* user, std::size_t index, std::size_t size, std::uint8_t* buffer) {
+						auto& ret = *static_cast<std::vector<T>*>(user);
+
 						// Can't really do this in a better way I don't think
 						// These will compile out anyways depending on the type so
 						// I don't think it's worth bothering
 
 						if constexpr(Type == ValueType::Int) {
 							auto swapped = Swap(*reinterpret_cast<std::uint32_t*>(buffer));
-							ret.push_back(swapped);
+							ret[index] = swapped;
 						}
 
 						if constexpr(Type == ValueType::Data) {
-							ret.push_back({ buffer, size });
+							ret[index] = { buffer, size };
 						}
 
 						if constexpr(Type == ValueType::String) {
 							if(size == 0) {
-								ret.push_back("");
+								ret[index] = "";
 							} else {
-								ret.push_back(std::string_view { reinterpret_cast<const char*>(buffer), size });
+								ret[index] = std::string_view { reinterpret_cast<const char*>(buffer), size };
 							}
 						}
 
 						if constexpr(Type == ValueType::WString) {
 							if(size == 0) {
-								ret.push_back("");
+								ret[index] = "";
 							} else {
-								ret.push_back(std::string_view { reinterpret_cast<const char*>(buffer), size });
+								ret[index] = std::string_view { reinterpret_cast<const char*>(buffer), size };
 							}
 						}
 
 						if constexpr(Type == ValueType::Int64) {
 							auto swapped = Swap(*reinterpret_cast<std::uint64_t*>(buffer));
-							ret.push_back(swapped);
-						}
-					}
-				});
+							ret[index] = swapped;
+						} }, &ret);
+				} else {
+					// Key was not found
+					return ret;
+				}
 
 				return ret;
 			}
 
+			/// Returns the first value for a key, or nullopt if the key does not exist.
 			template <ValueType Type>
 			auto GetFirst(std::string_view key) -> std::optional<typename ValueTypeToNaturalType<Type>::Type> {
 				auto values = Get<Type>(key);
@@ -125,6 +136,16 @@ namespace vpngate_io {
 
 		   private:
 			void WalkAllImpl(void (*Func)(void*, ValueType, std::string_view, std::size_t, std::uint8_t*), void* user);
+
+			struct WalkToResult {
+				ValueType type;
+				std::uint32_t nrValues;
+				std::uint8_t* valueMemory;
+			};
+
+			std::optional<WalkToResult> WalkToImpl(std::string_view key);
+
+			void WalkValuesImpl(std::uint8_t* pValueStart, ValueType type, std::size_t nrValues, void (*func)(void* user, std::size_t, std::size_t, std::uint8_t*), void* user);
 
 			std::uint8_t* buffer;
 			std::size_t size;

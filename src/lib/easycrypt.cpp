@@ -1,6 +1,7 @@
-#include <vpngate_io/easycrypt.hpp>
 #include <openssl/rc4.h>
 #include <openssl/sha.h>
+
+#include <vpngate_io/easycrypt.hpp>
 
 // TODO: Rewrite this to use OpenSSL EVP
 // so that we don't hit warnings here.
@@ -9,9 +10,9 @@ namespace vpngate_io {
 
 	std::unique_ptr<std::uint8_t[]> EasyDecrypt(std::uint8_t* key, std::uint8_t* buffer, std::size_t bufferSize) {
 		auto pBuffer = std::make_unique<std::uint8_t[]>(bufferSize);
-        RC4_KEY rc4Key{};
+		RC4_KEY rc4Key {};
 
-	    std::uint8_t rc4_key_sha1[0x14]{};
+		std::uint8_t rc4_key_sha1[0x14] {};
 
 		// SHA1 the key from the file to get the key we should use
 		// to schedule RC4
