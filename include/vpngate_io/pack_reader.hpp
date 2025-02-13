@@ -21,12 +21,12 @@ namespace vpngate_io {
 			return value;
 		}
 
-		/// Reader for SoftEther Mayaqua "Pack" files
+		/// Reader for SoftEther Mayaqua "Pack" serialized data
 		///
 		/// # Notes
-		/// This currently only handles enough required to work with
-		/// the VPNGate.dat file. It should also be refactored to maybe
-		/// use a byte stream, but for now, this works.
+		/// This should probably be refactored to maybe
+		/// use a byte stream, but for now, this works, and
+		/// the data also gets to be ✨zero copy✨. Which is nice.
 		struct PackReader {
 			PackReader(std::uint8_t* buffer, std::size_t size)
 				: buffer(buffer), size(size) {
@@ -42,6 +42,7 @@ namespace vpngate_io {
 							&f);
 			}
 
+			/// Structure for [PackReader::Keys()]
 			struct ElementKeyT {
 				std::string_view key;
 				ValueType elementType;
@@ -50,7 +51,7 @@ namespace vpngate_io {
 			/// Gets all keys and their type.
 			std::vector<ElementKeyT> Keys();
 
-			/// Returns `true` if the specified key exists with the given type.
+			/// Returns `true` if the given key exists with the given type.
 			template <ValueType Type>
 			bool KeyExists(std::string_view key) {
 				if(auto res = WalkToImpl(key); res.has_value()) {
@@ -66,7 +67,9 @@ namespace vpngate_io {
 				}
 			}
 
-			/// Gets all the values for a key.
+			// FIXME: This used to return a optional. Perhaps it still should
+
+			/// Gets all the values for a key. Returns an empty vector if a key does not exist
 			template <ValueType Type>
 			auto Get(std::string_view key) -> std::vector<typename ValueTypeToNaturalType<Type>::Type> {
 				using T = typename ValueTypeToNaturalType<Type>::Type;
