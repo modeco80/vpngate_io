@@ -8,8 +8,6 @@
 #include <cstdio>
 #include <system_error>
 
-// custom rolled file thing because I hate iostreams dearly
-// (seriously, it sucks)
 struct File {
 
     /// Opens a file. The file always has O_CLOEXEC enabled.
