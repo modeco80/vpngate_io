@@ -1,57 +1,69 @@
+#include <stdexcept>
 #include <vpngate_io/pack_reader.hpp>
-
 
 namespace vpngate_io::impl {
 
-	void AdvanceToNextValue(std::uint8_t*& bufptr, ValueType type) {
-		switch(type) {
-			case ValueType::Int: {
-				bufptr += 4;
-			} break;
+	namespace {
+		/// Helper to make advancing a buffer pointer safe. Will throw if an attempt to 
+		/// put the buffer out of bounds is made.
+		void SafeAdvance(std::uint8_t* bufferStart, std::uint8_t*& bufptr, std::size_t advanceCount, std::size_t bufferSize) {
+			// TODO: Definitely there's more needed
+			if((bufptr - bufferStart) + advanceCount > bufferSize)
+				throw std::runtime_error("PackReader: Attempt to exceed bounds of buffer!");
 
-			case ValueType::Data: {
-				auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-				bufptr += 4 + dataSize;
-			} break;
-
-			case ValueType::String: {
-				auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-				bufptr += 4 + (dataSize);
-			} break;
-
-			case ValueType::WString: {
-				auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-				bufptr += 4 + (dataSize);
-			} break;
-
-			case ValueType::Int64: {
-				bufptr += 8;
-			} break;
-
-			default:
-				break;
+			bufptr += advanceCount;
 		}
-	}
+
+		void AdvanceToNextValue(std::uint8_t* bufferStart, std::uint8_t*& bufptr, ValueType type, std::size_t bufferSize) {
+			switch(type) {
+				case ValueType::Int: {
+					SafeAdvance(bufferStart, bufptr, 4, bufferSize);
+				} break;
+
+				case ValueType::Data: {
+					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					SafeAdvance(bufferStart, bufptr, 4 + dataSize, bufferSize);
+				} break;
+
+				case ValueType::String: {
+					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					SafeAdvance(bufferStart, bufptr, 4 + dataSize, bufferSize);
+				} break;
+
+				case ValueType::WString: {
+					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					SafeAdvance(bufferStart, bufptr, 4 + dataSize, bufferSize);
+				} break;
+
+				case ValueType::Int64: {
+					SafeAdvance(bufferStart, bufptr, 8, bufferSize);
+				} break;
+
+				default:
+					break;
+			}
+		}
+	} // namespace
 
 	void PackReader::WalkAllImpl(void (*Func)(void*, ValueType, std::string_view, std::size_t, std::uint8_t*), void* user) {
 		auto* bufptr = buffer;
 
 		// Swap elements
 		auto nrElements = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-		bufptr += 4;
+		SafeAdvance(buffer, bufptr, 4, size);
 
 		for(auto i = 0; i < nrElements; ++i) {
 			auto elementNameLength = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-			bufptr += 4;
+			SafeAdvance(buffer, bufptr, 4, size);
 
 			auto elementName = std::string_view(reinterpret_cast<const char*>(bufptr), elementNameLength - 1);
-			bufptr += elementNameLength - 1;
+			SafeAdvance(buffer, bufptr, elementNameLength - 1, size);
 
 			auto elementType = static_cast<ValueType>(Swap(*reinterpret_cast<std::uint32_t*>(bufptr)));
-			bufptr += 4;
+			SafeAdvance(buffer, bufptr, 4, size);
 
 			auto elementNumValues = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-			bufptr += 4;
+			SafeAdvance(buffer, bufptr, 4, size);
 
 			// Walk all elements
 			for(auto j = 0; j < elementNumValues; ++j) {
@@ -90,7 +102,7 @@ namespace vpngate_io::impl {
 						break;
 				}
 
-				AdvanceToNextValue(bufptr, elementType);
+				AdvanceToNextValue(buffer, bufptr, elementType, size);
 			}
 		}
 	}
@@ -134,7 +146,7 @@ namespace vpngate_io::impl {
 					break;
 			}
 
-			AdvanceToNextValue(bufptr, type);
+			AdvanceToNextValue(buffer, bufptr, type, size);
 		}
 	}
 
@@ -143,28 +155,27 @@ namespace vpngate_io::impl {
 
 		// Swap elements
 		auto nrElements = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-		bufptr += 4;
+		SafeAdvance(buffer, bufptr, 4, size);
 
 		WalkToResult res;
 
 		for(auto i = 0; i < nrElements; ++i) {
-
 			auto elementNameLength = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-			bufptr += 4;
+			SafeAdvance(buffer, bufptr, 4, size);
 
 			auto elementName = std::string_view(reinterpret_cast<const char*>(bufptr), elementNameLength - 1);
-			bufptr += elementNameLength - 1;
+			SafeAdvance(buffer, bufptr, elementNameLength - 1, size);
 
 			auto elementType = static_cast<ValueType>(Swap(*reinterpret_cast<std::uint32_t*>(bufptr)));
-			bufptr += 4;
+			SafeAdvance(buffer, bufptr, 4, size);
 
 			auto elementNumValues = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
-			bufptr += 4;
+			SafeAdvance(buffer, bufptr, 4, size);
 
 			// Initalize result with the required fields:
 			// - Value Type
 			// - Value Count
-			// - A pointer to the start of the serialized values 
+			// - A pointer to the start of the serialized values
 			res.type = elementType;
 			res.nrValues = elementNumValues;
 			res.valueMemory = bufptr;
@@ -176,7 +187,7 @@ namespace vpngate_io::impl {
 
 			// Skip values, we don't care about that
 			for(auto j = 0; j < elementNumValues; ++j) {
-				AdvanceToNextValue(bufptr, elementType);
+				AdvanceToNextValue(buffer, bufptr, elementType, size);
 			}
 		}
 
