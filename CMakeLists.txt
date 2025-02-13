@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(vpngate_io
     src/lib/easycrypt.cpp
+    src/lib/dat_file.cpp
 )
 target_include_directories(vpngate_io PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
