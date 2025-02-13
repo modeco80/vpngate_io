@@ -1,10 +1,11 @@
 #include <stdexcept>
+#include <string_view>
 #include <vpngate_io/pack_reader.hpp>
 
 namespace vpngate_io::impl {
 
 	namespace {
-		/// Helper to make advancing a buffer pointer safe. Will throw if an attempt to 
+		/// Helper to make advancing a buffer pointer safe. Will throw if an attempt to
 		/// put the buffer out of bounds is made.
 		void SafeAdvance(std::uint8_t* bufferStart, std::uint8_t*& bufptr, std::size_t advanceCount, std::size_t bufferSize) {
 			// TODO: Definitely there's more needed
@@ -109,6 +110,7 @@ namespace vpngate_io::impl {
 
 	void PackReader::WalkValuesImpl(std::uint8_t* pValueStart, ValueType type, std::size_t nrValues, void (*func)(void* user, std::size_t, std::size_t, std::uint8_t*), void* user) {
 		auto bufptr = pValueStart;
+		auto bufsize = size - (pValueStart - bufptr);
 
 		for(auto j = 0; j < nrValues; ++j) {
 			switch(type) {
@@ -146,18 +148,18 @@ namespace vpngate_io::impl {
 					break;
 			}
 
-			AdvanceToNextValue(buffer, bufptr, type, size);
+			AdvanceToNextValue(buffer, bufptr, type, bufsize);
 		}
 	}
 
-	std::optional<PackReader::WalkToResult> PackReader::WalkToImpl(std::string_view key) {
+	std::optional<PackReader::KeyData> PackReader::WalkToImpl(std::string_view key) {
 		auto* bufptr = buffer;
 
 		// Swap elements
 		auto nrElements = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
 		SafeAdvance(buffer, bufptr, 4, size);
 
-		WalkToResult res;
+		KeyData res;
 
 		for(auto i = 0; i < nrElements; ++i) {
 			auto elementNameLength = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
@@ -179,6 +181,7 @@ namespace vpngate_io::impl {
 			res.type = elementType;
 			res.nrValues = elementNumValues;
 			res.valueMemory = bufptr;
+			res.key = elementName;
 
 			// We found what the caller wanted us to find.
 			if(elementName == key) {
@@ -195,20 +198,55 @@ namespace vpngate_io::impl {
 		return std::nullopt;
 	}
 
-	std::vector<PackReader::ElementKeyT> PackReader::Keys() {
-		std::vector<ElementKeyT> ret;
-		ElementKeyT push;
-		WalkAll([&](ValueType type, std::string_view name, std::size_t size, std::uint8_t* buffer) {
-			// Skip values
-			if(name == push.key && type == push.elementType) {
-				return;
-			} else {
-				// Setup new element
-				push.key = name;
-				push.elementType = type;
-				ret.push_back(push);
+	std::vector<PackReader::KeyData> PackReader::WalkKeysImpl() {
+		auto* bufptr = buffer;
+
+		// Swap elements
+		auto nrElements = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+		SafeAdvance(buffer, bufptr, 4, size);
+
+		std::vector<KeyData> res;
+
+		res.reserve(nrElements);
+
+		for(auto i = 0; i < nrElements; ++i) {
+			auto elementNameLength = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+			SafeAdvance(buffer, bufptr, 4, size);
+
+			auto elementName = std::string_view(reinterpret_cast<const char*>(bufptr), elementNameLength - 1);
+			SafeAdvance(buffer, bufptr, elementNameLength - 1, size);
+
+			auto elementType = static_cast<ValueType>(Swap(*reinterpret_cast<std::uint32_t*>(bufptr)));
+			SafeAdvance(buffer, bufptr, 4, size);
+
+			auto elementNumValues = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+			SafeAdvance(buffer, bufptr, 4, size);
+
+			KeyData data;
+			data.type = elementType;
+			data.nrValues = elementNumValues;
+			data.valueMemory = bufptr;
+			data.key = elementName;
+
+			res.push_back(data);
+
+			// Skip values, we don't care about that
+			for(auto j = 0; j < elementNumValues; ++j) {
+				AdvanceToNextValue(buffer, bufptr, elementType, size);
 			}
-		});
+		}
+
+		return res;
+	}
+
+	std::vector<PackReader::ElementKeyT> PackReader::Keys() {
+		auto keys = WalkKeysImpl();
+		std::vector<ElementKeyT> ret;
+
+		for(auto& key : keys)
+			ret.push_back(ElementKeyT {
+			.key = key.key,
+			.elementType = key.type });
 
 		return ret;
 	}

@@ -140,13 +140,16 @@ namespace vpngate_io {
 		   private:
 			void WalkAllImpl(void (*Func)(void*, ValueType, std::string_view, std::size_t, std::uint8_t*), void* user);
 
-			struct WalkToResult {
+			struct KeyData {
+				std::string_view key;
 				ValueType type;
 				std::uint32_t nrValues;
 				std::uint8_t* valueMemory;
 			};
 
-			std::optional<WalkToResult> WalkToImpl(std::string_view key);
+			std::optional<KeyData> WalkToImpl(std::string_view key);
+
+			std::vector<KeyData> WalkKeysImpl();
 
 			void WalkValuesImpl(std::uint8_t* pValueStart, ValueType type, std::size_t nrValues, void (*func)(void* user, std::size_t, std::size_t, std::uint8_t*), void* user);
 
