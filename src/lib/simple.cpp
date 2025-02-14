@@ -22,8 +22,8 @@ namespace vpngate_io {
 		if(file.ReadLine() != "[VPNGate Data File]")
 			return SimpleErrc::InvalidDat;
 
-        // Read the identifier.
-        identifier = file.ReadLine();
+		// Read the identifier.
+		identifier = file.ReadLine();
 
 		// We skip the weird header thing and go straight to the
 		// RC4 key.
@@ -51,7 +51,7 @@ namespace vpngate_io {
 		return reader.value();
 	}
 
-    const std::string& Simple::GetIdentifier() const {
-        return identifier;
-    }
+	const std::string& Simple::GetIdentifier() const {
+		return identifier;
+	}
 } // namespace vpngate_io

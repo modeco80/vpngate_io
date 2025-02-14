@@ -55,7 +55,7 @@ namespace vpngate_io {
 					} else {
 						return true;
 					}
-					
+
 				} else {
 					return false;
 				}
@@ -66,7 +66,7 @@ namespace vpngate_io {
 					auto& r = res.value();
 					return r.nrValues;
 				}
-				
+
 				return std::nullopt;
 			}
 

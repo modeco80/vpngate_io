@@ -122,7 +122,7 @@ namespace vpngate_io {
 	void OpenSSLPrintErrors() {
 		// clang-format off
 		ERR_print_errors_cb([](const char* p, std::size_t len, void*) {
-			fprintf(stderr, "OpenSSL error: %.*s\n", len, p);
+			fprintf(stderr, "OpenSSL error: %.*s\n", static_cast<int>(len), p);
 			return 0;
 		}, nullptr);
 		// clang-format on
