@@ -40,20 +40,34 @@ namespace vpngate_io {
 			/// Gets all keys and their type.
 			std::vector<ElementKeyT> Keys();
 
-			/// Returns `true` if the given key exists with the given type.
-			template <ValueType Type>
-			bool KeyExists(std::string_view key) {
+			/// Returns `true` if the given key exists.
+			///
+			/// Optionally, type can be set to a value, and this function will also type check, and return false
+			/// if the key's type does not match the passed-in type.
+			bool KeyExists(std::string_view key, std::optional<ValueType> type = std::nullopt) {
 				if(auto res = WalkToImpl(key); res.has_value()) {
-					if(res.value().type == Type) {
-						// Same type
-						return true;
+					if(type.has_value()) {
+						if(res.value().type == type.value()) {
+							return true;
+						} else {
+							return false;
+						}
 					} else {
-						// Different
-						return false;
+						return true;
 					}
+					
 				} else {
 					return false;
 				}
+			}
+
+			std::optional<std::size_t> ValueCount(std::string_view key) {
+				if(auto res = WalkToImpl(key); res.has_value()) {
+					auto& r = res.value();
+					return r.nrValues;
+				}
+				
+				return std::nullopt;
 			}
 
 			// FIXME: This used to return a optional. Perhaps it still should

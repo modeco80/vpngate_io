@@ -15,6 +15,11 @@ add_library(vpngate_io
     src/lib/easycrypt.cpp
     src/lib/dat_file.cpp
     src/lib/pack_reader.cpp
+
+    # C API
+    src/lib/capi/error.cpp
+    src/lib/capi/simple.cpp
+    src/lib/capi/pack_reader.cpp
 )
 target_include_directories(vpngate_io PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
@@ -35,6 +40,12 @@ if(VGIO_BUILD_UTILITIES)
 
     add_executable(vpngate_datid src/datid.cpp)
     target_link_libraries(vpngate_datid 
+        vpngate_io
+    )
+
+
+    add_executable(capi_test src/capi_test.c)
+    target_link_libraries(capi_test 
         vpngate_io
     )
 endif()
