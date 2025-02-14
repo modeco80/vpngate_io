@@ -10,7 +10,7 @@ Also comes with some utilities:
 - A .dat to json conversion utility
 
 There are two APIs:
-- A high level native C++ API
+- A high level native C++ API.
 - A high level C binding to the C++ API. Currently mostly undocumented, unstable, and mainly intended for FFI binding purposes.
 
 # Why?

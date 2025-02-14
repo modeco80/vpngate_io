@@ -5,31 +5,10 @@
 
 #include <boost/json.hpp>
 #include <boost/json/serialize.hpp>
-#include <vpngate_io/dat_file.hpp>
-#include <vpngate_io/easycrypt.hpp>
-#include <vpngate_io/pack_reader.hpp>
-
-#include "file.hpp"
+#include <vpngate_io/simple.hpp>
 
 namespace json = boost::json;
 namespace vg = vpngate_io;
-
-std::unique_ptr<std::uint8_t[]> GetDecryptedFileData(File& file) {
-	std::uint8_t rc4_key[0x14] {};
-	auto dataSize = file.Size() - 0x104;
-
-	auto encryptedBuffer = std::make_unique<std::uint8_t[]>(dataSize);
-
-	// We skip the weird header thing and go straight to the
-	// RC4 key.
-	file.Seek(0xf0, 0);
-
-	// Read key and buffer
-	file.Read(&rc4_key[0], sizeof(rc4_key));
-	file.Read(&encryptedBuffer[0], dataSize);
-
-	return vg::EasyDecrypt(&rc4_key[0], &encryptedBuffer[0], dataSize);
-}
 
 void help(char* progname) {
 	// clang-format off
@@ -52,25 +31,19 @@ int main(int argc, char** argv) {
 		return 0;
 	}
 
-	auto dat = File::Open(argv[1], O_RDONLY);
+	vg::Simple simple(argv[1]);
 
-	// Check if the file is really a dat file
-	if(dat.ReadLine() != "[VPNGate Data File]")  {
-        std::printf("This file is NOT a VPNGate dat file.\n");
-        return 1;
-    }
+	switch(simple.Init()) {
+		case vg::SimpleErrc::Ok: break;
+		case vg::SimpleErrc::InvalidDat: {
+			printf("\"%s\" does not appear to be a VPNGate.dat file.\n", argv[1]);
+			return 1;
+		}; break;
+	}
 
-	auto decryptedSize = dat.Size() - 0x104;
-	auto decryptedData = GetDecryptedFileData(dat);
-	vg::PackReader innerPackReader(decryptedData.get(), decryptedSize);
+	auto& packReader = simple.PackReader();
 
-	std::size_t dataSize {};
-
-	auto datPackedDataBuffer = vg::GetDATPackData(innerPackReader, dataSize);
-
-	vg::PackReader packReader(datPackedDataBuffer.get(), dataSize);
-
-	// We can pick any table here to query the length of the keys we want to associatively map, 
+	// We can pick any table here to query the length of the keys we want to associatively map,
 	// but in this case, we just pick the ID table. Why not.
 	auto length = packReader.Get<vg::ValueType::Int64>("ID").size();
 

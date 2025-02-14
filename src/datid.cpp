@@ -1,4 +1,4 @@
-#include "file.hpp"
+#include <vpngate_io/simple.hpp>
 #include <cstdio>
 
 
@@ -23,14 +23,16 @@ int main(int argc, char** argv) {
 		return 0;
 	}
 
-	auto dat = File::Open(argv[1], O_RDONLY);
+	vpngate_io::Simple simple(argv[1]);
 
-    if(dat.ReadLine() != "[VPNGate Data File]")  {
-        std::printf("This file is NOT a VPNGate dat file\n");
-        return 1;
-    }
+	switch(simple.Init()) {
+		case vpngate_io::SimpleErrc::Ok: break;
+		case vpngate_io::SimpleErrc::InvalidDat: {
+			printf("\"%s\" does not appear to be a VPNGate.dat file.\n", argv[1]);
+			return 1;
+		}; break;
+	}
 
-    auto datId = dat.ReadLine();
-    std::printf("%s\n", datId.c_str());
+    std::printf("%s\n", simple.GetIdentifier().c_str());
     return 0;
 }
