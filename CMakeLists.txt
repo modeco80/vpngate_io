@@ -15,6 +15,7 @@ add_library(vpngate_io
     src/lib/easycrypt.cpp
     src/lib/dat_file.cpp
     src/lib/pack_reader.cpp
+    src/lib/simple.cpp
 
     # C API
     src/lib/capi/error.cpp

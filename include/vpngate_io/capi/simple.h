@@ -19,6 +19,8 @@ extern "C" {
 
     int vpngate_io_simple_init(vpngate_io_Simple* simple);
 
+    int vpngate_io_simple_get_identifier(vpngate_io_Simple*, char const** identifier);
+
     /* Gets the pack reader for a simple instance.
         Only call if vpngate_io_simple_init returns OK.
 
