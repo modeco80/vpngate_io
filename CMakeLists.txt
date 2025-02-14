@@ -40,13 +40,13 @@ if(VGIO_BUILD_UTILITIES)
     # Boost is only required for a utility build
     find_package(Boost REQUIRED COMPONENTS json)
 
-    add_executable(vpngate_dat2json src/dat2json.cpp)
+    add_executable(vpngate_dat2json src/utils/dat2json.cpp)
     target_link_libraries(vpngate_dat2json 
         vpngate_io
         Boost::json
     )
 
-    add_executable(vpngate_datid src/datid.cpp)
+    add_executable(vpngate_datid src/utils/datid.cpp)
     target_link_libraries(vpngate_datid 
         vpngate_io
     )
@@ -54,7 +54,7 @@ if(VGIO_BUILD_UTILITIES)
 endif()
 
 if(VGIO_BUILD_TESTUTILS)
-    add_executable(capi_test src/capi_test.c)
+    add_executable(capi_test src/test/capi_test.c)
     target_link_libraries(capi_test 
         vpngate_io
     )
