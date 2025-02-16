@@ -71,7 +71,9 @@ namespace vpngate_io {
 			}
 
 
-			std::optional<std::vector<Value>> GetValues(std::string_view key, ValueType expectedType);
+			/// Gets all the values for a key. Returns a vector of Values (which will need to be handled appropiately)
+			/// if the key existed, or nullopt if it did not.
+			std::optional<std::vector<Value>> GetValue(std::string_view key, ValueType expectedType);
 
 			/// Gets all the values for a key. Returns an empty vector if a key does not exist
 			template <ValueType Type>
@@ -79,7 +81,7 @@ namespace vpngate_io {
 				using T = typename ValueTypeToNaturalType<Type>::Type;
 				std::vector<T> ret;
 
-				if(auto res = GetValues(key, Type); res.has_value()) {
+				if(auto res = GetValue(key, Type); res.has_value()) {
 					auto& r = res.value();
 
 					ret.resize(r.size());

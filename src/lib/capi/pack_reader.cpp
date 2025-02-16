@@ -6,7 +6,7 @@
 namespace {
 	/// Helper function used to implement vpngate_io_pack_reader_get()
 	int PackReaderGetHelper(vpngate_io::PackReader* pack, std::string_view key, vpngate_io::ValueType expected, vpngate_io_value* value) {
-		auto values = pack->GetValues(key, expected);
+		auto values = pack->GetValue(key, expected);
 
 		if(!values.has_value())
 			return VPNGATE_IO_ERRC_KEY_DOES_NOT_EXIST;

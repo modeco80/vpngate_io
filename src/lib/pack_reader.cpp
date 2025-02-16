@@ -46,7 +46,7 @@ namespace vpngate_io::impl {
 		}
 	} // namespace
 
-	std::optional<std::vector<Value>> PackReader::GetValues(std::string_view key, ValueType expectedType) {
+	std::optional<std::vector<Value>> PackReader::GetValue(std::string_view key, ValueType expectedType) {
 		if(auto res = WalkToImpl(key); res.has_value()) {
 			std::vector<Value> ret;
 			auto& r = res.value();
