@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <span>
+#include <exception>
 #include <string_view>
 
 namespace vpngate_io {
@@ -16,7 +17,6 @@ namespace vpngate_io {
 	};
 
 	std::string_view ValueTypeToString(ValueType t);
-
 
 	/// A simple metafunction which returns a "natural"
 	/// C++ type to repressent a Pack value.
@@ -51,9 +51,15 @@ namespace vpngate_io {
 		using Type = std::uint64_t;
 	};
 
+	struct InvalidValueCast : std::exception {
+		const char* what() const noexcept override { return "invalid cast of pack value to invalid type"; }
+	};
 
+	/// A Pack "value". Holds a single element of varying type.
+	/// Not very safe to use really :(
 	struct Value {
 		ValueType type;
+
 		union {
 			std::uint32_t intValue;
 			std::span<std::uint8_t> dataValue;
@@ -61,6 +67,33 @@ namespace vpngate_io {
 			std::string_view wstringValue;
 			std::uint64_t int64Value;
 		};
+
+		/// Casts this value to a native C++ type.
+		template <ValueType Expected>
+		auto Cast() -> typename ValueTypeToNaturalType<Expected>::Type {
+			if(type != Expected) [[unlikely]]
+				throw InvalidValueCast();
+
+			if constexpr(Expected == ValueType::Int) {
+				return this->intValue;
+			}
+
+			if constexpr(Expected == ValueType::Data) {
+				return this->dataValue;
+			}
+
+			if constexpr(Expected == ValueType::String) {
+				return this->stringValue;
+			}
+
+			if constexpr(Expected == ValueType::WString) {
+				return this->wstringValue;
+			}
+
+			if constexpr(Expected == ValueType::Int64) {
+				return this->int64Value;
+			}
+		}
 	};
 
 } // namespace vpngate_io

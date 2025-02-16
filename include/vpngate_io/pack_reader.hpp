@@ -70,10 +70,11 @@ namespace vpngate_io {
 				return std::nullopt;
 			}
 
-
 			/// Gets all the values for a key. Returns a vector of Values (which will need to be handled appropiately)
 			/// if the key existed, or nullopt if it did not.
 			std::optional<std::vector<Value>> GetValue(std::string_view key, ValueType expectedType);
+
+			std::optional<Value> GetFirstValue(std::string_view key, ValueType expectedType);
 
 			/// Gets all the values for a key. Returns an empty vector if a key does not exist
 			template <ValueType Type>
@@ -87,25 +88,7 @@ namespace vpngate_io {
 					ret.resize(r.size());
 
 					for(std::size_t i = 0; i < r.size(); ++i) {
-						if constexpr(Type == ValueType::Int) {
-							ret[i] = r[i].intValue;
-						}
-
-						if constexpr(Type == ValueType::Data) {
-							ret[i] = r[i].dataValue;
-						}
-
-						if constexpr(Type == ValueType::String) {
-							ret[i] = r[i].stringValue;
-						}
-
-						if constexpr(Type == ValueType::WString) {
-							ret[i] = r[i].wstringValue;
-						}
-
-						if constexpr(Type == ValueType::Int64) {
-							ret[i] = r[i].int64Value;
-						}
+						ret[i] = r[i].Cast<Type>();
 					}
 
 					return ret;
@@ -117,10 +100,8 @@ namespace vpngate_io {
 			/// Returns the first value for a key, or nullopt if the key does not exist.
 			template <ValueType Type>
 			auto GetFirst(std::string_view key) -> std::optional<typename ValueTypeToNaturalType<Type>::Type> {
-				auto values = Get<Type>(key);
-				if(!values.empty())
-					return values[0];
-
+				if(auto value = GetFirstValue(key, Type); value.has_value())
+					return (*value).Cast<Type>();
 				return std::nullopt;
 			}
 
