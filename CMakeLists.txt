@@ -17,6 +17,7 @@ add_library(vpngate_io
     src/lib/dat_file.cpp
     src/lib/pack_reader.cpp
     src/lib/simple.cpp
+    src/lib/value.cpp
 )
 
 if(VGIO_BUILD_CAPI)
