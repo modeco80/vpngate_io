@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* the type of a pack value */
 typedef enum {
 	VPNGATE_IO_VALUETYPE_INT = 0,
@@ -12,6 +16,9 @@ typedef enum {
 	VPNGATE_IO_VALUETYPE_WSTRING = 3,
 	VPNGATE_IO_VALUETYPE_INT64 = 4
 } vpngate_io_value_type;
+
+/* get the string name of a vpngate_io_value_type */
+const char* vpngate_io_value_type_to_string(vpngate_io_value_type type);
 
 /* a loosely typed value */
 typedef struct {
@@ -37,5 +44,9 @@ typedef struct {
 		uint64_t int64Value;
 	};
 } vpngate_io_value;
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

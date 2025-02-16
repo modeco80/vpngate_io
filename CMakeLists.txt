@@ -24,6 +24,7 @@ if(VGIO_BUILD_CAPI)
     target_sources(vpngate_io PRIVATE
         # C API
         src/lib/capi/error.cpp
+        src/lib/capi/value.cpp
         src/lib/capi/simple.cpp
         src/lib/capi/pack_reader.cpp
     )
