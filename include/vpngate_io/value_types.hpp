@@ -68,6 +68,16 @@ namespace vpngate_io {
 			std::uint64_t int64Value;
 		};
 
+		/// Creates a value from type, buffer, and size.
+		///
+		/// # Notes
+		/// For variable length data (data, string, wstring) it is assumed
+		/// size has been fetched prior and the buffer actually points to the start
+		/// of the data rather than the length of the data.
+		///
+		/// This behaviour may be changed; do not count on it however
+		static Value FromRaw(ValueType type, std::uint8_t* pBuffer, std::size_t size);
+
 		/// Casts this value to a native C++ type.
 		template <ValueType Expected>
 		auto Cast() -> typename ValueTypeToNaturalType<Expected>::Type {

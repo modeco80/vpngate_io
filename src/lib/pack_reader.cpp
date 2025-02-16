@@ -2,6 +2,8 @@
 #include <string_view>
 #include <vpngate_io/pack_reader.hpp>
 
+#include "bytemuck.hpp"
+
 namespace vpngate_io::impl {
 
 	namespace {
@@ -22,17 +24,17 @@ namespace vpngate_io::impl {
 				} break;
 
 				case ValueType::Data: {
-					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					auto dataSize = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 					SafeAdvance(bufferStart, bufptr, 4 + dataSize, bufferSize);
 				} break;
 
 				case ValueType::String: {
-					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					auto dataSize = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 					SafeAdvance(bufferStart, bufptr, 4 + dataSize, bufferSize);
 				} break;
 
 				case ValueType::WString: {
-					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					auto dataSize = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 					SafeAdvance(bufferStart, bufptr, 4 + dataSize, bufferSize);
 				} break;
 
@@ -67,41 +69,12 @@ namespace vpngate_io::impl {
 				r.type
 			};
 
+			// clang-format off
 			WalkValuesImpl(res->valueMemory, r.type, r.nrValues, [](void* user, std::size_t index, std::size_t size, std::uint8_t* buffer) {
 				auto& ctx = *static_cast<WalkContext*>(user);
-
-				Value v {
-					.type = ctx.type
-				};
-
-				using enum ValueType;
-				switch(ctx.type) {
-					case Int:
-						v.intValue = Swap(*reinterpret_cast<std::uint32_t*>(buffer));
-						break;
-					case Data:
-						v.dataValue = { buffer, size };
-						break;
-					case String: {
-						if(size == 0) {
-							v.stringValue = "";
-						} else {
-							v.stringValue = std::string_view { reinterpret_cast<const char*>(buffer), size };
-						}
-					} break;
-					case WString: {
-						if(size == 0) {
-							v.wstringValue = "";
-						} else {
-							v.wstringValue = std::string_view { reinterpret_cast<const char*>(buffer), size };
-						}
-					} break;
-					case Int64:
-						v.int64Value = Swap(*reinterpret_cast<std::uint64_t*>(buffer));
-						break;
-				}
-
-				ctx.values.push_back(v); }, &ctx);
+				ctx.values.push_back(Value::FromRaw(ctx.type, buffer, size));
+			}, &ctx);
+			// clang-format on
 
 			return ret;
 		}
@@ -117,7 +90,7 @@ namespace vpngate_io::impl {
 			// Wrong type provided.
 			if(r.type != expectedType)
 				return std::nullopt;
-			
+
 			struct WalkContext {
 				std::optional<Value>& assign;
 				ValueType type;
@@ -133,39 +106,7 @@ namespace vpngate_io::impl {
 			// clang-format off
 			WalkValuesImpl(res->valueMemory, r.type, 1, [](void* user, std::size_t index, std::size_t size, std::uint8_t* buffer) {
 				auto& ctx = *static_cast<WalkContext*>(user);
-
-				Value v {
-					.type = ctx.type
-				};
-
-				using enum ValueType;
-				switch(ctx.type) {
-					case Int:
-						v.intValue = Swap(*reinterpret_cast<std::uint32_t*>(buffer));
-						break;
-					case Data:
-						v.dataValue = { buffer, size };
-						break;
-					case String: {
-						if(size == 0) {
-							v.stringValue = "";
-						} else {
-							v.stringValue = std::string_view { reinterpret_cast<const char*>(buffer), size };
-						}
-					} break;
-					case WString: {
-						if(size == 0) {
-							v.wstringValue = "";
-						} else {
-							v.wstringValue = std::string_view { reinterpret_cast<const char*>(buffer), size };
-						}
-					} break;
-					case Int64:
-						v.int64Value = Swap(*reinterpret_cast<std::uint64_t*>(buffer));
-						break;
-				}
-
-				ctx.assign.emplace(v); 
+				ctx.assign.emplace(Value::FromRaw(ctx.type, buffer, size)); 
 			}, &ctx);
 			// clang-format on
 
@@ -174,6 +115,20 @@ namespace vpngate_io::impl {
 
 		return std::nullopt;
 	}
+
+	std::vector<PackReader::ElementKeyT> PackReader::Keys() {
+		auto keys = WalkKeysImpl();
+		std::vector<ElementKeyT> ret;
+
+		for(auto& key : keys)
+			ret.push_back(ElementKeyT {
+			.key = key.key,
+			.elementType = key.type });
+
+		return ret;
+	}
+
+	// Scary internal implementation functions
 
 	void PackReader::WalkValuesImpl(std::uint8_t* pValueStart, ValueType type, std::size_t nrValues, void (*func)(void* user, std::size_t, std::size_t, std::uint8_t*), void* user) {
 		auto bufptr = pValueStart;
@@ -186,18 +141,18 @@ namespace vpngate_io::impl {
 				} break;
 
 				case ValueType::Data: {
-					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					auto dataSize = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 					func(user, j, dataSize, bufptr + 4);
 				} break;
 
 				case ValueType::String: {
-					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					auto dataSize = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 
 					func(user, j, dataSize, bufptr + 4);
 				} break;
 
 				case ValueType::WString: {
-					auto dataSize = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+					auto dataSize = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 
 					// :((((
 					if(dataSize == 0) {
@@ -223,22 +178,22 @@ namespace vpngate_io::impl {
 		auto* bufptr = buffer;
 
 		// Swap elements
-		auto nrElements = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+		auto nrElements = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 		SafeAdvance(buffer, bufptr, 4, size);
 
 		KeyData res;
 
 		for(auto i = 0; i < nrElements; ++i) {
-			auto elementNameLength = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+			auto elementNameLength = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 			SafeAdvance(buffer, bufptr, 4, size);
 
 			auto elementName = std::string_view(reinterpret_cast<const char*>(bufptr), elementNameLength - 1);
 			SafeAdvance(buffer, bufptr, elementNameLength - 1, size);
 
-			auto elementType = static_cast<ValueType>(Swap(*reinterpret_cast<std::uint32_t*>(bufptr)));
+			auto elementType = static_cast<ValueType>(BESwap(*reinterpret_cast<std::uint32_t*>(bufptr)));
 			SafeAdvance(buffer, bufptr, 4, size);
 
-			auto elementNumValues = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+			auto elementNumValues = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 			SafeAdvance(buffer, bufptr, 4, size);
 
 			// Initalize result with the required fields:
@@ -269,7 +224,7 @@ namespace vpngate_io::impl {
 		auto* bufptr = buffer;
 
 		// Swap elements
-		auto nrElements = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+		auto nrElements = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 		SafeAdvance(buffer, bufptr, 4, size);
 
 		std::vector<KeyData> res;
@@ -277,16 +232,16 @@ namespace vpngate_io::impl {
 		res.reserve(nrElements);
 
 		for(auto i = 0; i < nrElements; ++i) {
-			auto elementNameLength = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+			auto elementNameLength = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 			SafeAdvance(buffer, bufptr, 4, size);
 
 			auto elementName = std::string_view(reinterpret_cast<const char*>(bufptr), elementNameLength - 1);
 			SafeAdvance(buffer, bufptr, elementNameLength - 1, size);
 
-			auto elementType = static_cast<ValueType>(Swap(*reinterpret_cast<std::uint32_t*>(bufptr)));
+			auto elementType = static_cast<ValueType>(BESwap(*reinterpret_cast<std::uint32_t*>(bufptr)));
 			SafeAdvance(buffer, bufptr, 4, size);
 
-			auto elementNumValues = Swap(*reinterpret_cast<std::uint32_t*>(bufptr));
+			auto elementNumValues = BESwap(*reinterpret_cast<std::uint32_t*>(bufptr));
 			SafeAdvance(buffer, bufptr, 4, size);
 
 			KeyData data;
@@ -304,18 +259,6 @@ namespace vpngate_io::impl {
 		}
 
 		return res;
-	}
-
-	std::vector<PackReader::ElementKeyT> PackReader::Keys() {
-		auto keys = WalkKeysImpl();
-		std::vector<ElementKeyT> ret;
-
-		for(auto& key : keys)
-			ret.push_back(ElementKeyT {
-			.key = key.key,
-			.elementType = key.type });
-
-		return ret;
 	}
 
 } // namespace vpngate_io::impl

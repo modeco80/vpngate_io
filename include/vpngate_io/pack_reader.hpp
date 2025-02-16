@@ -11,13 +11,6 @@ namespace vpngate_io {
 
 	namespace impl {
 
-		// FIXME: Move
-		template <class T>
-		constexpr T Swap(const T value) {
-			if constexpr(std::endian::native == std::endian::little)
-				return std::byteswap(value);
-			return value;
-		}
 
 		/// Reader for SoftEther Mayaqua "Pack" serialized data
 		///
