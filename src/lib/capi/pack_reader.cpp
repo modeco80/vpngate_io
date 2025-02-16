@@ -3,55 +3,57 @@
 
 #include <vpngate_io/pack_reader.hpp>
 
-/// Helper used to implement vpngate_io_pack_reader_get()
-template <vpngate_io::ValueType Type>
-int vpngate_io_pack_reader_get_helper(vpngate_io::PackReader* pack, std::string_view key, vpngate_io_value* value) {
-	auto values = pack->Get<Type>(key);
+namespace {
+	/// Helper function used to implement vpngate_io_pack_reader_get()
+	int PackReaderGetHelper(vpngate_io::PackReader* pack, std::string_view key, vpngate_io::ValueType expected, vpngate_io_value* value) {
+		auto values = pack->GetValues(key, expected);
 
-	if(values.empty())
-		return VPNGATE_IO_ERRC_KEY_DOES_NOT_EXIST;
+		if(!values.has_value())
+			return VPNGATE_IO_ERRC_KEY_DOES_NOT_EXIST;
 
-	using vpngate_io::ValueType;
+		using vpngate_io::ValueType;
 
-	for(auto& raw : values) {
-		*value = {
-			.type = static_cast<vpngate_io_value_type>(Type),
-		};
-
-		if constexpr(Type == ValueType::Int) {
-			value->intValue = raw;
-		}
-
-		if constexpr(Type == ValueType::Data) {
-			value->dataValue = {
-				.ptr = raw.data(),
-				.len = raw.size()
+		// Convert the C++ value to its capi equlivant value
+		for(auto& raw : values.value()) {
+			*value = {
+				.type = static_cast<vpngate_io_value_type>(expected),
 			};
+
+			if(raw.type == ValueType::Int) {
+				value->intValue = raw.intValue;
+			}
+
+			if(raw.type == ValueType::Data) {
+				value->dataValue = {
+					.ptr = raw.dataValue.data(),
+					.len = raw.dataValue.size()
+				};
+			}
+
+			if(raw.type == ValueType::String) {
+				value->stringValue = {
+					.ptr = raw.stringValue.data(),
+					.len = raw.stringValue.size()
+				};
+			}
+
+			if(raw.type == ValueType::WString) {
+				value->wstringValue = {
+					.ptr = raw.wstringValue.data(),
+					.len = raw.wstringValue.size()
+				};
+			}
+
+			if(raw.type == ValueType::Int64) {
+				value->int64Value = raw.int64Value;
+			}
+
+			value++;
 		}
 
-		if constexpr(Type == ValueType::String) {
-			value->stringValue = {
-				.ptr = raw.data(),
-				.len = raw.size()
-			};
-		}
-
-		if constexpr(Type == ValueType::WString) {
-			value->wstringValue = {
-				.ptr = raw.data(),
-				.len = raw.size()
-			};
-		}
-
-		if constexpr(Type == ValueType::Int64) {
-			value->int64Value = raw;
-		}
-
-		value++;
+		return VPNGATE_IO_ERRC_OK;
 	}
-
-	return VPNGATE_IO_ERRC_OK;
-}
+} // namespace
 
 extern "C" {
 
@@ -145,23 +147,7 @@ int vpngate_io_pack_reader_get(vpngate_io_PackReader* reader, const char* key, v
 			if(type != valueType)
 				return VPNGATE_IO_ERRC_TYPE_MISMATCH;
 
-			switch(type) {
-				case VPNGATE_IO_VALUETYPE_INT:
-					return vpngate_io_pack_reader_get_helper<vpngate_io::ValueType::Int>(pReader, keyView, pValues);
-					break;
-				case VPNGATE_IO_VALUETYPE_DATA:
-					return vpngate_io_pack_reader_get_helper<vpngate_io::ValueType::Data>(pReader, keyView, pValues);
-					break;
-				case VPNGATE_IO_VALUETYPE_STRING:
-					return vpngate_io_pack_reader_get_helper<vpngate_io::ValueType::String>(pReader, keyView, pValues);
-					break;
-				case VPNGATE_IO_VALUETYPE_WSTRING:
-					return vpngate_io_pack_reader_get_helper<vpngate_io::ValueType::WString>(pReader, keyView, pValues);
-					break;
-				case VPNGATE_IO_VALUETYPE_INT64:
-					return vpngate_io_pack_reader_get_helper<vpngate_io::ValueType::Int64>(pReader, keyView, pValues);
-					break;
-			}
+			return PackReaderGetHelper(pReader, keyView, static_cast<vpngate_io::ValueType>(type), pValues);
 		} catch(...) {
 			return VPNGATE_IO_ERRC_INVALID_ARGUMENT;
 		}

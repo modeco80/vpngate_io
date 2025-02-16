@@ -46,6 +46,69 @@ namespace vpngate_io::impl {
 		}
 	} // namespace
 
+	std::optional<std::vector<Value>> PackReader::GetValues(std::string_view key, ValueType expectedType) {
+		if(auto res = WalkToImpl(key); res.has_value()) {
+			std::vector<Value> ret;
+			auto& r = res.value();
+
+			// Wrong type provided.
+			if(r.type != expectedType)
+				return std::nullopt;
+
+			ret.reserve(r.nrValues);
+
+			struct WalkContext {
+				std::vector<Value>& values;
+				ValueType type;
+			};
+
+			WalkContext ctx {
+				ret,
+				r.type
+			};
+
+			WalkValuesImpl(res->valueMemory, r.type, r.nrValues, [](void* user, std::size_t index, std::size_t size, std::uint8_t* buffer) {
+				auto& ctx = *static_cast<WalkContext*>(user);
+
+				Value v {
+					.type = ctx.type
+				};
+
+				using enum ValueType;
+				switch(ctx.type) {
+					case Int:
+						v.intValue = Swap(*reinterpret_cast<std::uint32_t*>(buffer));
+						break;
+					case Data:
+						v.dataValue = { buffer, size };
+						break;
+					case String: {
+						if(size == 0) {
+							v.stringValue = "";
+						} else {
+							v.stringValue = std::string_view { reinterpret_cast<const char*>(buffer), size };
+						}
+					} break;
+					case WString: {
+						if(size == 0) {
+							v.wstringValue = "";
+						} else {
+							v.wstringValue = std::string_view { reinterpret_cast<const char*>(buffer), size };
+						}
+					} break;
+					case Int64:
+						v.int64Value = Swap(*reinterpret_cast<std::uint64_t*>(buffer));
+						break;
+				}
+
+				ctx.values.push_back(v); }, &ctx);
+
+			return ret;
+		}
+
+		return std::nullopt;
+	}
+
 	void PackReader::WalkValuesImpl(std::uint8_t* pValueStart, ValueType type, std::size_t nrValues, void (*func)(void* user, std::size_t, std::size_t, std::uint8_t*), void* user) {
 		auto bufptr = pValueStart;
 		auto bufsize = size - (pValueStart - bufptr);

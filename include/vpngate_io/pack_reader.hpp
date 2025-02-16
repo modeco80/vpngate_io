@@ -70,7 +70,8 @@ namespace vpngate_io {
 				return std::nullopt;
 			}
 
-			// FIXME: This used to return a optional. Perhaps it still should
+
+			std::optional<std::vector<Value>> GetValues(std::string_view key, ValueType expectedType);
 
 			/// Gets all the values for a key. Returns an empty vector if a key does not exist
 			template <ValueType Type>
@@ -78,53 +79,33 @@ namespace vpngate_io {
 				using T = typename ValueTypeToNaturalType<Type>::Type;
 				std::vector<T> ret;
 
-				if(auto res = WalkToImpl(key); res.has_value()) {
+				if(auto res = GetValues(key, Type); res.has_value()) {
 					auto& r = res.value();
 
-					// Wrong type provided @ compile time.
-					if(r.type != Type)
-						return ret;
+					ret.resize(r.size());
 
-					ret.resize(r.nrValues);
-
-					WalkValuesImpl(r.valueMemory, Type, r.nrValues, [](void* user, std::size_t index, std::size_t size, std::uint8_t* buffer) {
-						auto& ret = *static_cast<std::vector<T>*>(user);
-
-						// Can't really do this in a better way I don't think
-						// These will compile out anyways depending on the type so
-						// I don't think it's worth bothering
-
+					for(std::size_t i = 0; i < r.size(); ++i) {
 						if constexpr(Type == ValueType::Int) {
-							auto swapped = Swap(*reinterpret_cast<std::uint32_t*>(buffer));
-							ret[index] = swapped;
+							ret[i] = r[i].intValue;
 						}
 
 						if constexpr(Type == ValueType::Data) {
-							ret[index] = { buffer, size };
+							ret[i] = r[i].dataValue;
 						}
 
 						if constexpr(Type == ValueType::String) {
-							if(size == 0) {
-								ret[index] = "";
-							} else {
-								ret[index] = std::string_view { reinterpret_cast<const char*>(buffer), size };
-							}
+							ret[i] = r[i].stringValue;
 						}
 
 						if constexpr(Type == ValueType::WString) {
-							if(size == 0) {
-								ret[index] = "";
-							} else {
-								ret[index] = std::string_view { reinterpret_cast<const char*>(buffer), size };
-							}
+							ret[i] = r[i].wstringValue;
 						}
 
 						if constexpr(Type == ValueType::Int64) {
-							auto swapped = Swap(*reinterpret_cast<std::uint64_t*>(buffer));
-							ret[index] = swapped;
-						} }, &ret);
-				} else {
-					// Key was not found
+							ret[i] = r[i].int64Value;
+						}
+					}
+
 					return ret;
 				}
 
@@ -135,9 +116,10 @@ namespace vpngate_io {
 			template <ValueType Type>
 			auto GetFirst(std::string_view key) -> std::optional<typename ValueTypeToNaturalType<Type>::Type> {
 				auto values = Get<Type>(key);
-				if(values.empty())
-					return std::nullopt;
-				return values[0];
+				if(!values.empty())
+					return values[0];
+
+				return std::nullopt;
 			}
 
 		   private:

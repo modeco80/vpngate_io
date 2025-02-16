@@ -29,6 +29,7 @@ namespace vpngate_io {
 		// clang-format on
 	}
 
+
 	/// A simple metafunction which returns a "natural"
 	/// C++ type to repressent a Pack value.
 	///
@@ -60,6 +61,18 @@ namespace vpngate_io {
 	template <>
 	struct ValueTypeToNaturalType<ValueType::Int64> {
 		using Type = std::uint64_t;
+	};
+
+
+	struct Value {
+		ValueType type;
+		union {
+			std::uint32_t intValue;
+			std::span<std::uint8_t> dataValue;
+			std::string_view stringValue;
+			std::string_view wstringValue;
+			std::uint64_t int64Value;
+		};
 	};
 
 } // namespace vpngate_io
